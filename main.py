@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
 import uuid
@@ -15,19 +16,19 @@ app = FastAPI()
 # Enable CORS for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],  # Allow frontend on port 8080
+    allow_origins=["*"],  # Allow all origins for Render deployment
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Supported languages (mapped to Edge TTS locales)
-SUPPORTED_LANGUAGES = ["en-US", "es-ES", "fr-FR", "de-DE", "zh-CN", "hi-IN"]
+# Serve static files (frontend)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-class TTSRequest(BaseModel):
-    text: str
-    language: str = ""
-    voice: str = "en-US-JennyNeural"
+# Serve index.html at root
+@app.get("/")
+async def serve_index():
+    return FileResponse("static/index.html", media_type="text/html")
 
 @app.post("/tts")
 async def text_to_speech(request: TTSRequest):
@@ -43,7 +44,6 @@ async def text_to_speech(request: TTSRequest):
     if not language:
         try:
             detected_lang = detect(text)
-            # Map detected language to Edge TTS locale
             lang_map = {
                 "en": "en-US",
                 "es": "es-ES",
@@ -67,7 +67,7 @@ async def text_to_speech(request: TTSRequest):
     }
     voice_name = voice_map.get(voice, "en-US-JennyNeural")
 
-    # Adjust voice based on language (simplified; add more mappings as needed)
+    # Adjust voice based on language
     if language != "en-US" and voice != "baby":
         voice_map = {
             "es-ES": "es-ES-ElviraNeural",
@@ -101,7 +101,7 @@ async def text_to_speech(request: TTSRequest):
 
     # Return audio file URL
     return {
-        "audio_url": f"http://localhost:8000/audio/{filename}",
+        "audio_url": f"/audio/{filename}",
         "filename": filename
     }
 
@@ -112,9 +112,18 @@ async def get_audio(filename: str):
         raise HTTPException(status_code=404, detail="Audio file not found")
     return FileResponse(file_path, media_type="audio/wav", filename=filename)
 
-# Cleanup old audio files (optional, can be enhanced)
+# Cleanup old audio files
 @app.on_event("shutdown")
 def cleanup():
     import shutil
     if os.path.exists("audio"):
         shutil.rmtree("audio")
+
+# Define TTSRequest class
+class TTSRequest(BaseModel):
+    text: str
+    language: str = ""
+    voice: str = "en-US-JennyNeural"
+
+# Supported languages
+SUPPORTED_LANGUAGES = ["en-US", "es-ES", "fr-FR", "de-DE", "zh-CN", "hi-IN"]
