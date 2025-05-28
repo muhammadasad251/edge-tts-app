@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl">
+        <h1 class="text-2xl font-bold mb-4 text-center">Text-to-Speech Converter</h1>
+        <form id="tts-form" class="space-y-4">
+            <div>
+                <label for="text" class="block text-sm font-medium text-gray-700">Enter Text (up to 1000+ words):</label>
+                <textarea id="text" name="text" rows="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="Type or paste your text here..."></textarea>
+                <p id="word-count" class="text-sm text-gray-500">Word count: 0</p>
+            </div>
+            <div>
+                <label for="language" class="block text-sm font-medium text-gray-700">Select Language (optional):</label>
+                <select id="language" name="language" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="">Detect Automatically</option>
+                    <option value="en-US">English (US)</option>
+                    <option value="es-ES">Spanish</option>
+                    <option value="fr-FR">French</option>
+                    <option value="de-DE">German</option>
+                    <option value="zh-CN">Chinese</option>
+                    <option value="hi-IN">Hindi</option>
+                    <!-- Add more languages as supported by Edge TTS -->
+                </select>
+            </div>
+            <div>
+                <label for="voice" class="block text-sm font-medium text-gray-700">Select Voice:</label>
+                <select id="voice" name="voice" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="en-US-AriaNeural">Female Voice (Aria)</option>
+                    <option value="en-US-GuyNeural">Male Voice (Guy)</option>
+                    <option value="en-US-JennyNeural">Neutral Voice (Jenny)</option>
+                    <option value="baby">Baby Voice</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700">Generate Audio</button>
+        </form>
+        <div id="result" class="mt-4 hidden">
+            <p class="text-sm text-gray-700">Audio generated! Click below to download:</p>
+            <a id="download-link" href="#" download class="text-indigo-600 hover:underline">Download Audio</a>
+            <audio id="audio-player" controls class="mt-2 w-full"></audio>
+        </div>
+        <p id="error" class="mt-4 text-red-500 hidden"></p>
+    </div>
+
+    <script>
+        const form = document.getElementById('tts-form');
+        const textArea = document.getElementById('text');
+        const wordCount = document.getElementById('word-count');
+        const resultDiv = document.getElementById('result');
+        const downloadLink = document.getElementById('download-link');
+        const audioPlayer = document.getElementById('audio-player');
+        const errorDiv = document.getElementById('error');
+
+        // Update word count in real-time
+        textArea.addEventListener('input', () => {
+            const words = textArea.value.trim().split(/\s+/).filter(word => word.length > 0).length;
+            wordCount.textContent = `Word count: ${words}`;
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            resultDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
+
+            const text = textArea.value;
+            const language = document.getElementById('language').value;
+            const voice = document.getElementById('voice').value;
+
+            try {
+                const response = await fetch('http://localhost:8000/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, language, voice })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to generate audio');
+                }
+
+                const data = await response.json();
+                downloadLink.href = data.audio_url;
+                downloadLink.textContent = `Download ${data.filename}`;
+                audioPlayer.src = data.audio_url;
+                resultDiv.classList.remove('hidden');
+            } catch (error) {
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
