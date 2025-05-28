@@ -10,10 +10,12 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy all files, including static directory
 COPY . .
-COPY static/index.html /app/static/
 
-RUN mkdir -p /app/audio
+# Ensure static directory exists
+RUN mkdir -p /app/static /app/audio
+COPY static/index.html /app/static/
 
 # Expose port dynamically or default to 8000
 EXPOSE ${PORT:-8000}

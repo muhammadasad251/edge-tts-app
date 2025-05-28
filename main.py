@@ -30,6 +30,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 async def serve_index():
     return FileResponse("static/index.html", media_type="text/html")
 
+# Define TTSRequest class before usage
+class TTSRequest(BaseModel):
+    text: str
+    language: str = ""
+    voice: str = "en-US-JennyNeural"
+
 @app.post("/tts")
 async def text_to_speech(request: TTSRequest):
     text = request.text.strip()
@@ -113,11 +119,8 @@ async def get_audio(filename: str):
     return FileResponse(file_path, media_type="audio/wav", filename=filename)
 
 # Cleanup old audio files
-@app.on_event("shutdown")
-def cleanup():
-    import shutil
-    if os.path.exists("audio"):
-        shutil.rmtree("audio")
+# Define TTSRequest class
+# (Moved above to avoid redefinition)
 
 # Define TTSRequest class
 class TTSRequest(BaseModel):
